@@ -10,6 +10,8 @@ HOW TO RUN:
 OUTPUTS:
     - outputs/figures/confusion_matrix.png
     - outputs/figures/sample_predictions.png
+    - outputs/figures/per_class_accuracy.png
+    - outputs/figures/gradcam_samples.png
     - outputs/classification_report.txt
 ==========================================================================
 """
@@ -175,6 +177,96 @@ plt.tight_layout()
 plt.savefig('outputs/figures/per_class_accuracy.png', dpi=200, bbox_inches='tight')
 plt.close()
 print("✅ Per-class accuracy chart saved")
+
+# ==========================================================================
+# GRAD-CAM VISUALIZATIONS (model interpretability)
+# ==========================================================================
+# Grad-CAM (Selvaraju et al., 2017) highlights the image regions that most
+# influenced the model's predicted class. Useful for the thesis as a
+# "where the model looks" interpretability figure.
+print("Creating Grad-CAM figure...")
+
+def _find_last_conv_layer(m):
+    # Find the EfficientNetV2B0 sub-model embedded in our trained model.
+    for layer in m.layers:
+        if isinstance(layer, keras.Model):
+            return layer
+    return None
+
+BASE_MODEL = _find_last_conv_layer(model)
+if BASE_MODEL is None:
+    raise RuntimeError("Could not locate base sub-model for Grad-CAM.")
+
+# Head = layers AFTER the base sub-model (GAP -> Dropout -> Dense -> Dropout -> Dense).
+_seen, HEAD_LAYERS = False, []
+for _layer in model.layers:
+    if _layer is BASE_MODEL:
+        _seen = True
+        continue
+    if _seen:
+        HEAD_LAYERS.append(_layer)
+
+def compute_gradcam(model, img_batch, class_idx):
+    # Single tape, single forward pass — features and preds share the graph,
+    # so gradients flow from class score back to the conv feature map.
+    with tf.GradientTape() as tape:
+        features = BASE_MODEL(img_batch, training=False)
+        tape.watch(features)
+        x = features
+        for layer in HEAD_LAYERS:
+            x = layer(x, training=False)
+        loss = x[:, class_idx]
+    grads = tape.gradient(loss, features)
+    pooled = tf.reduce_mean(grads, axis=(0, 1, 2))
+    conv_out = features[0]
+    heatmap = conv_out @ pooled[..., tf.newaxis]
+    heatmap = tf.squeeze(heatmap)
+    heatmap = tf.maximum(heatmap, 0) / (tf.reduce_max(heatmap) + 1e-8)
+    return heatmap.numpy()
+
+# Pick 8 test images (mix of correct + incorrect if available).
+gc_images, gc_true, gc_pred, gc_conf = [], [], [], []
+for images, labels in test_ds_batched.take(2):
+    preds = model.predict(images, verbose=0)
+    for i in range(len(images)):
+        gc_images.append(images[i].numpy())
+        gc_true.append(int(labels[i].numpy()))
+        gc_pred.append(int(np.argmax(preds[i])))
+        gc_conf.append(float(np.max(preds[i])))
+        if len(gc_images) >= 8:
+            break
+    if len(gc_images) >= 8:
+        break
+
+fig, axes = plt.subplots(2, 8, figsize=(20, 6))
+for col in range(8):
+    img = gc_images[col]
+    img_batch = tf.expand_dims(tf.constant(img, dtype=tf.float32), 0)
+    heat = compute_gradcam(model, img_batch, gc_pred[col])
+    # upsample heatmap to image size
+    heat_resized = tf.image.resize(heat[..., tf.newaxis], (IMG_SIZE, IMG_SIZE)).numpy().squeeze()
+
+    img_u8 = img.astype('uint8')
+    correct = gc_true[col] == gc_pred[col]
+    title = (f"True: {class_names[gc_true[col]]}\n"
+             f"Pred: {class_names[gc_pred[col]]} ({gc_conf[col]*100:.0f}%)")
+    color = 'green' if correct else 'red'
+
+    axes[0, col].imshow(img_u8)
+    axes[0, col].set_title(title, color=color, fontsize=8)
+    axes[0, col].axis('off')
+
+    axes[1, col].imshow(img_u8)
+    axes[1, col].imshow(heat_resized, cmap='jet', alpha=0.45)
+    axes[1, col].axis('off')
+
+axes[0, 0].set_ylabel('Input', fontsize=11)
+axes[1, 0].set_ylabel('Grad-CAM', fontsize=11)
+plt.suptitle('Grad-CAM: where the model looks when predicting the breed', fontsize=13)
+plt.tight_layout()
+plt.savefig('outputs/figures/gradcam_samples.png', dpi=200, bbox_inches='tight')
+plt.close()
+print("✅ Grad-CAM figure saved")
 
 # ==========================================================================
 # SUMMARY

@@ -66,6 +66,9 @@ cd pet_classifier
 Copy these files into the `pet_classifier` folder:
 - `01_train_model.py`
 - `02_evaluate_model.py`
+- `03_app.py` (Gradio demo UI)
+- `04_server.py` (FastAPI backend for the editorial frontend)
+- `web/` folder (`index.html`, `style.css`, `app.js`)
 - `requirements.txt`
 - This `README.md`
 
@@ -163,6 +166,42 @@ This generates:
 
 ---
 
+## 🖥️ PART 4: RUN THE WEB UI
+
+Two UIs are bundled. Both require training to be complete first
+(`outputs/models/final_model.keras` must exist).
+
+### Option A — Editorial frontend (recommended)
+
+FastAPI backend + hand-built static frontend with an editorial / magazine
+look. Supports drag-and-drop uploads, paste from clipboard, and a live
+webcam feed.
+
+```cmd
+venv\Scripts\activate
+python 04_server.py
+```
+
+Open `http://127.0.0.1:8000` in your browser.
+
+- **Upload & Paste** tab — drop an image, browse, or paste a clipboard
+  image. Click "Classify specimen" for the top-5 result.
+- **Live Camera** tab — grants webcam permission, then streams
+  predictions a few times per second.
+
+### Option B — Gradio quick demo
+
+Simpler, prebuilt UI. Useful for a single-file demo.
+
+```cmd
+venv\Scripts\activate
+python 03_app.py
+```
+
+Open `http://127.0.0.1:7860`.
+
+---
+
 ## 📁 FINAL OUTPUT STRUCTURE
 
 After everything runs, your folder will look like:
@@ -171,9 +210,17 @@ After everything runs, your folder will look like:
 pet_classifier/
 ├── 01_train_model.py
 ├── 02_evaluate_model.py
+├── 03_app.py              ← Gradio demo UI
+├── 04_server.py           ← FastAPI backend for the editorial frontend
+├── web/                   ← Static frontend (HTML / CSS / JS)
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
 ├── requirements.txt
 ├── README.md
-├── venv/
+├── CLAUDE.md
+├── .gitignore
+├── venv/                  (git-ignored)
 └── outputs/
     ├── models/
     │   ├── best_phase1.keras
@@ -216,6 +263,34 @@ pet_classifier/
 
 ---
 
+## 🐙 PUSHING TO GITHUB
+
+A `.gitignore` is included. Note:
+
+- **`venv/` is excluded** — it's machine-specific and large. Anyone
+  cloning the repo recreates it with `python -m venv venv`.
+- **`outputs/models/*.keras` is excluded by default** — the trained
+  weights are ~70 MB each, above GitHub's 50 MB soft warning. Two ways
+  to share the model:
+  1. Have collaborators retrain locally (`python 01_train_model.py`).
+  2. Attach `final_model.keras` to a GitHub **Release**, or push via
+     [Git LFS](https://git-lfs.com/).
+- **`outputs/figures/` and reports are kept** — these are small and
+  useful as committed artifacts of the trained run.
+
+Initial push:
+
+```cmd
+git init
+git add .
+git commit -m "Initial commit: pet breed classifier + editorial UI"
+git branch -M main
+git remote add origin https://github.com/<your-username>/<repo>.git
+git push -u origin main
+```
+
+---
+
 ## 📬 WHAT TO SEND BACK AFTER TRAINING
 
 Send these to the team:
@@ -235,8 +310,18 @@ Once setup is done, running again is simple:
 ```cmd
 cd Desktop\pet_classifier
 venv\Scripts\activate
+
+# Train (only once, or to retrain)
 python 01_train_model.py
+
+# Generate evaluation figures
 python 02_evaluate_model.py
+
+# Launch the editorial web UI
+python 04_server.py        # then open http://127.0.0.1:8000
+
+# Or the Gradio demo
+python 03_app.py           # then open http://127.0.0.1:7860
 ```
 
 That's it. Good luck! 🚀

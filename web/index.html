@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Breed Classifier — Issue 01</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- Grain overlay -->
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="masthead__row">
+      <span class="masthead__title">The Breed Classifier</span>
+      <span class="masthead__meta">Issue 01 &middot; Oxford-IIIT &middot; EfficientNetV2B0</span>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- HERO -->
+    <section class="hero">
+      <h1 class="hero__title">
+        What <span class="italic">breed</span> is it?
+      </h1>
+      <p class="hero__lede">
+        A fine-grained image classifier for domestic cats and dogs. Built on
+        <strong>EfficientNetV2B0</strong> with two-phase transfer learning on the
+        Oxford-IIIT Pet dataset &mdash; trained to distinguish 37 breeds at
+        <strong>92.45%</strong> test accuracy.
+      </p>
+    </section>
+
+    <!-- LIMITS -->
+    <section class="limits">
+      <div class="limits__rule"></div>
+      <p class="limits__text">
+        <em>A note on limits.</em> This catalog recognizes
+        <strong>thirty-seven breeds</strong> from the Oxford-IIIT Pet
+        dataset &mdash; twelve cats, twenty-five dogs. Photographs of
+        other animals, mixed breeds, or breeds outside this list will
+        still receive a verdict; consult the confidence score and the
+        list below before drawing conclusions.
+      </p>
+    </section>
+
+    <!-- INDEX -->
+    <section class="index">
+      <header class="index__head">
+        <span class="caps tracked">Index of breeds</span>
+        <span class="hairline"></span>
+      </header>
+      <div class="index__cols">
+        <div class="index__col">
+          <h3 class="index__title">
+            <span class="italic">Cats</span>
+            <span class="num" id="count-cats">&mdash;</span>
+          </h3>
+          <ul class="index__list" id="list-cats"></ul>
+        </div>
+        <div class="index__col">
+          <h3 class="index__title">
+            <span class="italic">Dogs</span>
+            <span class="num" id="count-dogs">&mdash;</span>
+          </h3>
+          <ul class="index__list" id="list-dogs"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKBENCH -->
+    <section class="bench">
+      <!-- Mode rail -->
+      <nav class="modes" role="tablist" aria-label="Capture mode">
+        <button class="mode is-active" data-mode="upload" role="tab" aria-selected="true">
+          <span class="mode__num">I.</span>
+          <span class="mode__label">Upload &amp; Paste</span>
+        </button>
+        <button class="mode" data-mode="webcam" role="tab" aria-selected="false">
+          <span class="mode__num">II.</span>
+          <span class="mode__label">Live Camera</span>
+        </button>
+      </nav>
+
+      <div class="bench__grid">
+        <!-- Stage -->
+        <div class="stage" id="stage">
+          <input type="file" id="file" accept="image/*" hidden />
+
+          <!-- Upload panel -->
+          <div class="stage__panel" data-panel="upload">
+            <div class="dropzone" id="dropzone">
+              <div class="dropzone__inner">
+                <div class="dropzone__mark" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" width="56" height="56">
+                    <circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="0.6"/>
+                    <path d="M22 36 L32 24 L42 36" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M32 24 L32 44" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <p class="dropzone__title">Drop a photograph here</p>
+                <p class="dropzone__sub">
+                  Drag and drop an image into this area, or
+                  <button class="link" type="button" id="browse">choose a file</button>
+                  from your computer.
+                </p>
+                <ul class="dropzone__hints">
+                  <li><span class="caps tracked">Paste</span> from clipboard with <kbd>Ctrl</kbd>+<kbd>V</kbd></li>
+                  <li><span class="caps tracked">Or</span> switch to <em>Live Camera</em> above to use your webcam</li>
+                </ul>
+                <p class="dropzone__meta caps tracked muted">JPG &middot; PNG &middot; WEBP</p>
+              </div>
+              <img class="dropzone__preview" id="preview" alt="" hidden />
+            </div>
+          </div>
+
+          <!-- Webcam panel -->
+          <div class="stage__panel" data-panel="webcam" hidden>
+            <div class="dropzone webcam">
+              <video id="video" playsinline muted></video>
+              <canvas id="canvas" hidden></canvas>
+              <div class="webcam__overlay">
+                <div class="webcam__corners" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <p class="webcam__hint" id="webcam-hint">Hold a pet steady within the frame.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <button class="action" id="classify" type="button" disabled>
+              <span>Classify specimen</span>
+              <svg viewBox="0 0 24 12" width="28" height="14" aria-hidden="true">
+                <path d="M0 6 H22 M16 1 L22 6 L16 11" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button class="action action--ghost" id="reset" type="button" hidden>Clear</button>
+            <span class="actions__status" id="status"></span>
+          </div>
+        </div>
+
+        <!-- Analysis -->
+        <aside class="analysis" aria-live="polite">
+          <header class="analysis__head">
+            <span class="caps tracked">Analysis</span>
+            <span class="hairline"></span>
+          </header>
+
+          <div class="verdict" id="verdict" hidden>
+            <div class="verdict__species">
+              <span class="caps tracked muted">Species</span>
+              <span class="verdict__species-value" id="species-value">&mdash;</span>
+            </div>
+            <div class="verdict__top">
+              <span class="caps tracked muted">Most likely</span>
+              <span class="verdict__top-value" id="top-value">&mdash;</span>
+            </div>
+          </div>
+
+          <ol class="ranks" id="ranks">
+            <li class="ranks__empty">No specimen yet. Submit one for analysis.</li>
+          </ol>
+
+          <p class="warn" id="warn" hidden></p>
+        </aside>
+      </div>
+    </section>
+
+    <footer class="colophon">
+      <span>Set in Fraunces, Newsreader &amp; JetBrains Mono.</span>
+      <span>Model: EfficientNetV2B0, two-phase transfer learning.</span>
+    </footer>
+  </main>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

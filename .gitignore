@@ -1,2 +1,34 @@
-.vscode
+.vscode/
+.idea/
 venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / runtime
+*.log
+.gradio/
+gradio_cached_examples/
+
+# Local notes / drafts
+*.docx
+~$*
+
+# Trained model weights — ~70 MB each, exceeds GitHub's 50 MB soft limit.
+# Re-generate via `python 01_train_model.py`, or share via Releases / Git LFS.
+outputs/models/*.keras
+
+# TensorFlow Datasets local cache (downloaded on first run)
+tensorflow_datasets/
